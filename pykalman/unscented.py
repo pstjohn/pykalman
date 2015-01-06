@@ -11,6 +11,7 @@ from collections import namedtuple
 import numpy as np
 from numpy import ma
 from scipy import linalg
+from scipy.spatial.distance import mahalanobis
 
 from .utils import array1d, array2d, check_random_state, get_params, preprocess_arguments, check_random_state
 
@@ -55,7 +56,7 @@ def points2moments(points, sigma_noise=None):
 
 def moments2points(moments, alpha=None, beta=None, kappa=None):
     '''Calculate "sigma points" used in Unscented Kalman Filter
-
+spatial.distance import mahalanobis
     Parameters
     ----------
     moments : [n_dim] Moments object
@@ -343,7 +344,8 @@ def unscented_filter_predict(transition_function, points_state,
 def unscented_filter_correct(observation_function, moments_pred,
                              points_pred, observation,
                              points_observation=None,
-                             sigma_observation=None):
+                             sigma_observation=None,
+                             max_mahalanobis_dist=None):
     """Integrate new observation to correct state estimates
 
     Parameters
@@ -364,6 +366,11 @@ def unscented_filter_correct(observation_function, moments_pred,
     sigma_observation : [n_dim_obs, n_dim_obs] array
         covariance matrix corresponding to additive noise in observation at
         time t+1, if available. If missing, noise is assumed to be non-linear.
+    max_mahalanobis_dist : float
+        maximum allowable mahalanobis distance from the observation to the 
+        predicted observation. An observation with a distance larger
+        than will be deemed an outlier and converted to a masked (missing)
+        observation.
 
     Returns
     -------
@@ -378,6 +385,18 @@ def unscented_filter_correct(observation_function, moments_pred,
             points_noise=points_observation, sigma_noise=sigma_observation
         )
     )
+
+    # Calculate mahalanobis distance from the point to the observation
+    obs_mahalanobis_dist = (
+        mahalanobis(
+            observation,
+            obs_moments_pred.mean,
+            np.linalg.pinv(obs_moments_pred.covariance)
+        )
+    )
+
+    if obs_mahalanobis_dist > max_mahalanobis_dist: 
+        observation.mask = True
 
     # Calculate Cov(x_t, z_t | z_{0:t-1})
     sigma_pair = (
@@ -913,7 +932,8 @@ class UnscentedKalmanFilter(UnscentedMixin):
                       filtered_state_mean, filtered_state_covariance,
                       observation=None,
                       transition_function=None, transition_covariance=None,
-                      observation_function=None, observation_covariance=None):
+                      observation_function=None, observation_covariance=None,
+                      max_mahalanobis_dist=None):
         r"""Update a Kalman Filter state estimate
 
         Perform a one-step update to estimate the state at time :math:`t+1`
@@ -946,6 +966,11 @@ class UnscentedKalmanFilter(UnscentedMixin):
         observation_covariance : optional, [n_dim_obs, n_dim_obs] array
             observation covariance at time t+1.  If unspecified,
             `self.observation_covariance` will be used.
+        max_mahalanobis_dist : float
+            maximum allowable mahalanobis distance from the observation to the 
+            predicted observation. An observation with a distance larger
+            than will be deemed an outlier and converted to a masked (missing)
+            observation.
 
         Returns
         -------
@@ -1011,7 +1036,8 @@ class UnscentedKalmanFilter(UnscentedMixin):
         next_filtered_state_mean, next_filtered_state_covariance = (
             unscented_filter_correct(
                 observation_function, moments_pred, points_pred,
-                observation, points_observation=points_observation
+                observation, points_observation=points_observation,
+                max_mahalanobis_dist=max_mahalanobis_dist
             )
         )
 
