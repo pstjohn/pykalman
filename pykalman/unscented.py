@@ -1243,7 +1243,8 @@ class AdditiveUnscentedKalmanFilter(UnscentedMixin):
                       filtered_state_mean, filtered_state_covariance,
                       observation=None,
                       transition_function=None, transition_covariance=None,
-                      observation_function=None, observation_covariance=None):
+                      observation_function=None, observation_covariance=None,
+                      max_mahalanobis_dist=None):
         r"""Update a Kalman Filter state estimate
 
         Perform a one-step update to estimate the state at time :math:`t+1`
@@ -1276,6 +1277,11 @@ class AdditiveUnscentedKalmanFilter(UnscentedMixin):
         observation_covariance : optional, [n_dim_obs, n_dim_obs] array
             observation covariance at time t+1.  If unspecified,
             `self.observation_covariance` will be used.
+        max_mahalanobis_dist : float
+            maximum allowable mahalanobis distance from the observation to the 
+            predicted observation. An observation with a distance larger
+            than will be deemed an outlier and converted to a masked (missing)
+            observation.
 
         Returns
         -------
@@ -1339,7 +1345,8 @@ class AdditiveUnscentedKalmanFilter(UnscentedMixin):
         (next_filtered_state_mean, next_filtered_state_covariance) = (
             unscented_filter_correct(
                 observation_function, moments_pred, points_pred,
-                observation, sigma_observation=observation_covariance
+                observation, sigma_observation=observation_covariance,
+                max_mahalanobis_dist=max_mahalanobis_dist
             )
         )
 
