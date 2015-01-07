@@ -407,7 +407,14 @@ def unscented_filter_correct(observation_function, moments_pred,
 
     # Calculate E[x_t | z_{0:t}], Var(x_t | z_{0:t})
     moments_filt = unscented_correct(sigma_pair, moments_pred, obs_moments_pred, observation)
-    return moments_filt
+
+    # If we specify a maximum distance, return both the feasibility as
+    # well as the current moments.
+    if max_mahalanobis_dist:
+        return moments_filt, obs_mahalanobis_dist
+
+    else:
+        return moments_filt
 
 
 def augmented_unscented_filter(mu_0, sigma_0, f, g, Q, R, Z):
@@ -1033,13 +1040,18 @@ class UnscentedKalmanFilter(UnscentedMixin):
         )
 
         # correct
-        next_filtered_state_mean, next_filtered_state_covariance = (
+        next_moments, mahalanobis_dist = (
             unscented_filter_correct(
                 observation_function, moments_pred, points_pred,
                 observation, points_observation=points_observation,
                 max_mahalanobis_dist=max_mahalanobis_dist
             )
         )
+
+        self.curr_mahalobis_dist = mahalanobis_dist
+        
+        next_filtered_state_mean, next_filtered_state_covariance = (
+            next_moments)
 
         return (next_filtered_state_mean, next_filtered_state_covariance)
 
@@ -1342,13 +1354,18 @@ class AdditiveUnscentedKalmanFilter(UnscentedMixin):
         points_pred = moments2points(moments_pred)
 
         # correct
-        (next_filtered_state_mean, next_filtered_state_covariance) = (
+        next_moments, mahalanobis_dist = (
             unscented_filter_correct(
                 observation_function, moments_pred, points_pred,
                 observation, sigma_observation=observation_covariance,
                 max_mahalanobis_dist=max_mahalanobis_dist
             )
         )
+
+        self.curr_mahalobis_dist = mahalanobis_dist
+
+        next_filtered_state_mean, next_filtered_state_covariance = (
+            next_moments)
 
         return (next_filtered_state_mean, next_filtered_state_covariance)
 
