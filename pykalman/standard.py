@@ -182,7 +182,7 @@ def _filter_predict(transition_matrix, transition_covariance,
 
     Parameters
     ----------
-    transition_matrix : [n_dim_state, n_dim_state} array
+    transition_matrix : [n_dim_state, n_dim_state] array
         state transition matrix from time t to t+1
     transition_covariance : [n_dim_state, n_dim_state] array
         covariance matrix for state transition from time t to t+1
